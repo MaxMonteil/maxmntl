@@ -1,20 +1,23 @@
 ---
-import '../styles/global.css'
+import BaseLayout from '../layouts/BaseLayout.astro'
 ---
+<BaseLayout pageTitle="maxmntl">
+  <h1>
+    max<span style="opacity: 0.7;">imilien</span> m<span style="opacity: 0.7;">o</span>nt<span style="opacity: 0.7;">ei</span>l
+  </h1>
 
-<html lang="en">
-	<head>
-		<meta charset="utf-8" />
-		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-		<meta name="viewport" content="width=device-width" />
-		<meta name="generator" content={Astro.generator} />
-		<title>maxmntl</title>
-	</head>
-	<body>
-    <article>
-      <h1>
-        max<span style="opacity: 0.7;">imilien</span> m<span style="opacity: 0.7;">o</span>nt<span style="opacity: 0.7;">ei</span>l
-      </h1>
-    </article>
-	</body>
-</html>
+  <p class="subtitle">Contribution over consumption and other wacky ideas</p>
+
+  <section>
+    <p>Hello hello, and welcome to my site!</p>
+    <p>My name is Max, I have a jumbled mess of thoughts and ideas so I write to clarify and remember.</p>
+  </section>
+
+  <section>
+    <h2>Posts</h2>
+
+    <ul>
+      <li><a href="/blog/svg-favicons/">SVG Favicons?!</a></li>
+    </ul>
+  </section>
+</BaseLayout>
