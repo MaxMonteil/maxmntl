@@ -3,7 +3,7 @@ import BaseLayout from './BaseLayout.astro'
 
 const { frontmatter } = Astro.props
 ---
-<BaseLayout pageTitle={frontmatter.title}>
+<BaseLayout pageTitle={frontmatter.title} description={frontmatter.description}>
   <h3 style="opacity: 0.7;"><a href="/">maxmntl</a></h3>
 
   <slot />
