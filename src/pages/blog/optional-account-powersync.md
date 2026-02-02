@@ -1,14 +1,14 @@
 ---
 layout: ../../layouts/PostLayout.astro
-title: 'Apps with Optional Account using Powersync'
+title: 'Account Optional Apps with PowerSync'
 pubDate: 2026-02-05
-description: 'Using powersync to make an app you can use without requiring an account.'
+description: 'Using PowerSync to make an app you can use without requiring an account.'
 ---
 <section>
 
-  # Apps with Optional Account using Powersync
+  # Account Optional Apps with PowerSync
 
-  <p class="subtitle">Local-first is cool. Powersync is local-first. Therefore, Powersync is cool. CQFD.</p>
+  <p class="subtitle">Local-first is cool. PowerSync is local-first. Therefore, PowerSync is cool. CQFD.</p>
 
   Now lets look at the proof.
 
@@ -28,7 +28,7 @@ description: 'Using powersync to make an app you can use without requiring an ac
   - [lofi.so](https://lofi.so/)
   - [Local-first Landscape](https://www.localfirst.fm/landscape)
 
-  ## Powersync
+  ## PowerSync
 
   A large part of what makes modern local-first software lies in the sync-engine.
 
@@ -36,9 +36,9 @@ description: 'Using powersync to make an app you can use without requiring an ac
 
   This version needs to stay up to date with your local changes, some kind of code, machine, or *engine* needs to be in charge of doing the sync.
 
-  You can write your own which Linear did or you can use something like [Powersync](https://www.powersync.com/).
+  You can write your own which Linear did or you can use something like [PowerSync](https://www.PowerSync.com/).
 
-  Powersync will let you have a SQLite database in your user's browser against which you can manage all their created data while in the background it'll handle syncing your changes to a remote Postgres database (, MongoDB, MySQL, or SQL Server).
+  PowerSync will let you have a SQLite database in your user's browser against which you can manage all their created data while in the background it'll handle syncing your changes to a remote Postgres database (, MongoDB, MySQL, or SQL Server).
 
   It also works for pretty much any web or native client framework as well.
 </section>
@@ -74,15 +74,15 @@ description: 'Using powersync to make an app you can use without requiring an ac
 
   ## The setup
 
-  Tech here will be Powersync of course, and Vue.
+  Tech here will be PowerSync of course, and Vue.
 
-  A critical resource was Powersync's own [React Supabase Todolist with Optional Sync](https://github.com/powersync-ja/powersync-js/tree/main/demos/react-supabase-todolist-optional-sync) example which set the foundation I worked off of. I recommend going over the README.md there for an explanation of how it works.
+  A critical resource was PowerSync's own [React Supabase Todolist with Optional Sync](https://github.com/PowerSync-ja/PowerSync-js/tree/main/demos/react-supabase-todolist-optional-sync) example which set the foundation I worked off of. I recommend going over the README.md there for an explanation of how it works.
 
   Additionally I'll go over issues and other things I ran into.
 
   ### Rough Steps
 
-  1. [Change your Powersync schema creation into a function with dynamic names](#function-able-schema)
+  1. [Change your PowerSync schema creation into a function with dynamic names](#function-able-schema)
   2. [Keep track when Sync Mode is enabled or not](#sync-mode-tracking)
   3. [Update your routes and UX around the auth and "user setting" pages](#auth-routes-and-pages)
   4. [Handle the "signed out user"](#default-signed-out-user)
@@ -92,12 +92,181 @@ description: 'Using powersync to make an app you can use without requiring an ac
       * [Switching tables and data on auth](#switching-sync-mode-on-auth)
       * [Handling Foreign Key references during the batch insert](#insert-order-of-operations)
 
+  Once again, we'll be referring to [PowerSync's own example on how to do this](https://github.com/PowerSync-ja/PowerSync-js/tree/main/demos/react-supabase-todolist-optional-sync) quite a lot.
+
   We've got our plan, lets get to it!
 </section>
 
 <section>
 
   ## Function-able Schema
+
+  We start of simple by just making sure our schema is built with a function that can take one argument.
+
+  By default, PowerSync recommends defining your tables at the top-level then passing them into `new Schema` like so:
+
+  ```ts
+  const todos = new Table(
+    { /* table columns */ },
+    { /* table options */ },
+  )
+
+  const lists = new Table({ /* list of columns */ });
+
+  export const AppSchema = new Schema({
+    todos,
+    lists,
+  })
+  ```
+
+  But we'll need to create our schema with dynamic view names, depending on whether we're in sync mode or not.
+
+  First we create an object for our table definitions.
+  <label for="option-function" class="margin-toggle">&#8853;</label>
+  <input type="checkbox" id="option-function" class="margin-toggle"/>
+  <span class="marginnote">
+    ⚠ Watch out! `options` is a function.
+  </span>
+
+  ```ts
+  const todosDef = {
+    columns: { /* table columns */ },
+    options: (viewName: string, localOnly = false) => ({
+      viewName,
+      localOnly,
+      /* other table options */
+    }),
+  }
+  ```
+
+  `columns` hasn't changed.
+
+  `options` is now a function, this was to avoid having to pass the same table options key value pairs so often.
+
+
+  This here comes straight from the example. These functions set the correct table view names depending on the sync mode we're in.
+  We can set whatever view name we want, but know that this will be the way to refernce these tables in all your queries.
+
+  ```ts
+  function syncedName(table: string, synced: boolean) {
+    return synced ? table : `inactive_synced_${table}`
+  }
+
+  function localName(table: string, synced: boolean) {
+    return synced ? `inactive_local_${table}` : table
+  }
+  ```
+  Finally there's the actual schema creation:
+  <label for="curry-function" class="margin-toggle">&#8853;</label>
+  <input type="checkbox" id="curry-function" class="margin-toggle"/>
+  <span class="marginnote">
+    `toSyncedName` & `toLocalName` are other examples of lazyness. I didn't want to type the same thing out too much.
+    <br><br>
+    I also set the default argument value here to `true` since we haven't set up anything else yet. This way everything should still continue to work.
+  </span>
+
+  ```ts
+  export function makeSchema(synced = true) {
+    const toSyncedName = (table: string) => syncedName(table, synced)
+    const toLocalName = (table: string) => localName(table, synced)
+
+    return new Schema({
+      lists: new Table(
+        listsDef.columns,
+        listsDef.options(toSyncedName('lists')),
+      ),
+      local_lists: new Table(
+        listsDef.columns,
+        listsDef.options(toLocalName('lists'), true),
+      ),
+
+      todos: new Table(
+        todosDef.columns,
+        todosDef.options(toSyncedName('todos')),
+      ),
+      local_todos: new Table(
+        todosDef.columns,
+        todosDef.options(toLocalName('todos'), true),
+      ),
+
+      /* Local only draft tables */
+      draft_todos: new Table(
+        todosDef.columns,
+        todosDef.options('draft_todos', true),
+      ),
+    })
+  }
+  ```
+
+  Of special note here is the `draft_todos` table. This is a table that will always be local only, I don't want to sync it and in my app the logic already always clears it out.
+  <label for="draft-tables" class="margin-toggle">&#8853;</label>
+  <input type="checkbox" id="draft-tables" class="margin-toggle"/>
+  <span class="marginnote">
+    I used these tables for long running forms. Copy the live data into a draft table, apply user edits to it, then on save reconcile the changes. With this pattern I had an easier time dropping all changes on quit or cancel.
+  </span>
+
+
+  <details>
+    <summary><h3>Here's the full thing all together</h3></summary>
+
+  ```ts
+  const listsDef = {
+    columns: { /* table columns */ },
+    options: (viewName: string, localOnly = false) => ({
+      viewName,
+      localOnly,
+    }),
+  }
+
+  const todosDef = {
+    columns: { /* table columns */ },
+    options: (viewName: string, localOnly = false) => ({
+      viewName,
+      localOnly,
+      /* other table options */
+    }),
+  }
+
+  function syncedName(table: string, synced: boolean) {
+    return synced ? table : `inactive_synced_${table}`
+  }
+
+  function localName(table: string, synced: boolean) {
+    return synced ? `inactive_local_${table}` : table
+  }
+
+  export function makeSchema(synced = true) {
+    const toSyncedName = (table: string) => syncedName(table, synced)
+    const toLocalName = (table: string) => localName(table, synced)
+
+    return new Schema({
+      lists: new Table(
+        listsDef.columns,
+        listsDef.options(toSyncedName('lists')),
+      ),
+      local_lists: new Table(
+        listsDef.columns,
+        listsDef.options(toLocalName('lists'), true),
+      ),
+
+      todos: new Table(
+        todosDef.columns,
+        todosDef.options(toSyncedName('todos')),
+      ),
+      local_todos: new Table(
+        todosDef.columns,
+        todosDef.options(toLocalName('todos'), true),
+      ),
+
+      /* Local only draft tables */
+      draft_todos: new Table(
+        todosDef.columns,
+        todosDef.options('draft_todos', true),
+      ),
+    })
+  }
+  ```
+  </details>
 </section>
 
 <section>
