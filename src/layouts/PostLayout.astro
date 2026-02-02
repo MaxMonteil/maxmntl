@@ -6,12 +6,12 @@ const { frontmatter } = Astro.props
 ---
 <BaseLayout pageTitle={frontmatter.title} description={frontmatter.description}>
   <h3>
+    <a href="/" style="opacity: 0.7;">maxmntl</a>
+
     <label id="theme-label">
       <input type="checkbox" class="sr-only" id="theme-input" />
       <MoonSun id="theme-icon" />
     </label>
-
-    <a href="/" style="opacity: 0.7;">maxmntl</a>
   </h3>
 
   <slot />
