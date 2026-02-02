@@ -292,6 +292,14 @@ code, pre > code {
   -webkit-text-size-adjust: 100%; /* Prevent adjustments of font size after orientation changes in iOS. See https://github.com/edwardtufte/tufte-css/issues/81#issuecomment-261953409 */
 }
 
+code:not(pre > *) {
+  color: #1E66F5;
+  background-color: #EFF1F5;
+  padding-inline: 6px;
+  padding-block: 2px;
+  border-radius: 3px;
+}
+
 .sans > code {
   font-size: 1.2rem;
 }
@@ -508,5 +516,37 @@ body {
         }
       }
     }
+
+    code:not(pre > *) {
+      color: #89B4FA;
+      background-color: #1E1E2E;
+    }
+
+    .astro-code,
+    .astro-code span {
+      color: var(--shiki-dark) !important;
+      background-color: var(--shiki-dark-bg) !important;
+      font-style: var(--shiki-dark-font-style) !important;
+      font-weight: var(--shiki-dark-font-weight) !important;
+      text-decoration: var(--shiki-dark-text-decoration) !important;
+    }
+  }
+}
+
+/* markdown syntax highlighting */
+section > .astro-code {
+  padding-block: 15px;
+  padding-left: 15px;
+  border-radius: 4px;
+
+  width: 55%;
+
+  @media (max-width: 760px) {
+    width: 100%;
+  }
+
+  code {
+    width: 100%;
+    margin: 0;
   }
 }
