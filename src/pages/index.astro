@@ -1,10 +1,15 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro'
+import MoonSun from '../assets/moon-sun.svg';
 
 const allPosts = Object.values(import.meta.glob('./blog/*.md', { eager: true }))
 ---
 <BaseLayout pageTitle="maxmntl" description="Contribution over consumption and other wacky ideas">
   <h1>
+    <label id="theme-label">
+      <input type="checkbox" class="sr-only" id="theme-input" />
+      <MoonSun id="theme-icon" />
+    </label>
     max<span style="opacity: 0.7;">imilien</span> m<span style="opacity: 0.7;">o</span>nt<span style="opacity: 0.7;">ei</span>l
   </h1>
 

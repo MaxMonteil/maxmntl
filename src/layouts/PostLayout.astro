@@ -1,10 +1,18 @@
 ---
 import BaseLayout from './BaseLayout.astro'
+import MoonSun from '../assets/moon-sun.svg';
 
 const { frontmatter } = Astro.props
 ---
 <BaseLayout pageTitle={frontmatter.title} description={frontmatter.description}>
-  <h3 style="opacity: 0.7;"><a href="/">maxmntl</a></h3>
+  <h3>
+    <label id="theme-label">
+      <input type="checkbox" class="sr-only" id="theme-input" />
+      <MoonSun id="theme-icon" />
+    </label>
+
+    <a href="/" style="opacity: 0.7;">maxmntl</a>
+  </h3>
 
   <slot />
 </BaseLayout>
