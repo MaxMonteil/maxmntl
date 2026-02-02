@@ -444,6 +444,31 @@ label.margin-toggle:not(.sidenote-number) {
   }
 }
 
+/* New tags */
+details {
+  width: 55%;
+
+  @media (max-width: 760px) {
+    width: 100%;
+  }
+
+  summary {
+    cursor: pointer;
+
+    h3 {
+      display: inline-block;
+      margin-left: 8px;
+      margin-top: calc(2rem - 3px);
+      margin-bottom: 10px;
+      transform: translateY(3px);
+    }
+  }
+
+  pre.astro-code {
+    width: 100%;
+  }
+}
+
 /* Dark and light theme */
 body {
   background-color: #fffff8;
@@ -534,7 +559,7 @@ body {
 }
 
 /* markdown syntax highlighting */
-section > .astro-code {
+.astro-code {
   padding-block: 15px;
   padding-left: 15px;
   border-radius: 4px;
