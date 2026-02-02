@@ -1,17 +1,14 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro'
-import MoonSun from '../assets/moon-sun.svg';
+import ThemeToggle from '../components/ThemeToggle.astro';
 
 const allPosts = Object.values(import.meta.glob('./blog/*.md', { eager: true }))
 ---
 <BaseLayout pageTitle="maxmntl" description="Contribution over consumption and other wacky ideas">
-  <h1>
+  <h1 id="site-title">
     <span>max<span style="opacity: 0.7;">imilien</span> m<span style="opacity: 0.7;">o</span>nt<span style="opacity: 0.7;">ei</span>l</span>
 
-    <label id="theme-label">
-      <input type="checkbox" class="sr-only" id="theme-input" />
-      <MoonSun id="theme-icon" title="A sun icon with a crescent moon cutout inside."/>
-    </label>
+    <ThemeToggle />
   </h1>
 
   <p class="subtitle">Contribution over consumption and other wacky ideas</p>
