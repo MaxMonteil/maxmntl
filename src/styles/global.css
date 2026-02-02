@@ -49,9 +49,16 @@ body {
   max-width: 1400px;
   counter-reset: sidenote-counter;
 
+  transition:
+    color 300ms ease-in-out,
+    background-color 300ms ease-in-out;
+
+
   svg#theme-icon {
     height: 28px;
     margin-bottom: -3px;
+
+    transition: transform 200ms ease-in-out;
   }
 
   h3 {
@@ -78,6 +85,10 @@ body {
 
       svg#theme-icon {
         fill: #111;
+
+        input:checked + & {
+          transform: rotate(10deg);
+        }
       }
     }
   }
@@ -98,6 +109,10 @@ body {
 
       svg#theme-icon {
         fill: #ddd;
+
+        input:checked + & {
+          transform: rotate(-10deg);
+        }
       }
     }
   }
