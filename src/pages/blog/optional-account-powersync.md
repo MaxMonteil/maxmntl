@@ -12,13 +12,25 @@ description: 'Using PowerSync to make an app you can use without requiring an ac
 
   Now lets look at the proof.
 
+  <details>
+    <summary><h3>TL;DR</h3></summary>
+
+  > ~What follows is a mathematical proof that local-first is in fact "cool".~
+  >
+  > I'll go over a brief intro of local-first and introduce PowerSync, a library that helps you build apps that don't require a constant internet connection.
+  >
+  > I argue that in the spirit of local-first, you shouldn't require an account from users.
+  >
+  > Once convinced, I'll go through the implementation details to enable users to create data without an account and then transfer that into their account if they register or log in.
+  </details>
+
   First, we need some definitions.
 
   ## Local-first
 
   Local-first software is a growing movement and pattern in software development aiming to bring back the Good Old Days when you downloaded an app, it was fast, and it worked without internet and your data was all yours to do with what you want.
 
-  It's a more modern take on that with some modern ammenities for the way we work now where internet is at least expected so that you can access your data on multiple devices, work with other people and more.
+  It's a more modern take on that with some modern amenities for the way we work now where internet is at least expected so that you can access your data on multiple devices, work with other people and more.
 
   The best place to start learning more is with the [Seven Ideals for local-first software](https://www.inkandswitch.com/essay/local-first/#seven-ideals-for-local-first-software:~:text=collaboration%20and%20ownership-,Seven%20ideals%20for%20local%2Dfirst%20software,-1.%20No%20spinners) by the Ink and Switch lab who coined the term and played a principal role in its spread.
 
@@ -45,7 +57,7 @@ description: 'Using PowerSync to make an app you can use without requiring an ac
 
 <section>
 
-  ## Local-first means you shouldn't require an account
+  ## Local-first means you shouldn't **require** an account
 
   What's not to love about local-first,
 <label for="local-first-shots" class="margin-toggle">&#8853;</label>
@@ -58,7 +70,7 @@ description: 'Using PowerSync to make an app you can use without requiring an ac
 
   I wanted that and more for my app so when I took local-first further, I realized I don't even need to require users to make an account.
 
-  After downloading the app, all your data is there, if you don't need or want to sync then there's no point in having an account. That shoudn't limit you otherwise it goes against ideal 7: "You retain ultimate ownership and control".
+  After downloading the app, all your data is there, if you don't need or want to sync then there's no point in having an account. That shouldn't limit you otherwise it goes against ideal 7: "You retain ultimate ownership and control".
 <label for="free-users" class="margin-toggle">&#8853;</label>
 <input type="checkbox" id="free-users" class="margin-toggle"/>
 <span class="marginnote">
@@ -95,7 +107,7 @@ description: 'Using PowerSync to make an app you can use without requiring an ac
   6. The rest of the owl
       * [Implement Schema change and data transfer](#local-to-sync-data-transfer)
       * [Switching tables and data on auth](#switching-sync-mode-on-auth)
-      * [Handling Foreign Key references during the batch insert](#insert-order-of-operations)
+      * [\[Sidebar\]: Handling Foreign Key references during the batch insert](#sidebar-insert-order-of-operations)
 
   Once again, we'll be referring to [PowerSync's own example on how to do this](https://github.com/PowerSync-ja/PowerSync-js/tree/main/demos/react-supabase-todolist-optional-sync) quite a lot.
 
@@ -150,7 +162,7 @@ description: 'Using PowerSync to make an app you can use without requiring an ac
 
 
   This here comes straight from the example. These functions set the correct table view names depending on the sync mode we're in.
-  We can set whatever view name we want, but know that this will be the way to refernce these tables in all your queries.
+  We can set whatever view name we want, but know that this will be the way to reference these tables in all your queries.
 
   ```ts
   function syncedName(table: string, synced: boolean) {
@@ -404,8 +416,10 @@ description: 'Using PowerSync to make an app you can use without requiring an ac
   In the `PowersyncConnector` class, you'll need to register the listener and call it as needed.
 
   ```ts
-  // In my case I'm using Firebase for auth, if you use Supabase it should be more similar to the PowerSync docs
-  // If you use something else this should help you find the places to change when using a 3rd party auth service
+  // In my case I'm using Firebase for auth, if you use Supabase
+  // it should be more similar to the PowerSync docs.
+  // If you use something else this should help you find the
+  // places to change when using a 3rd party auth service
   import type { Auth, User } from 'firebase/auth'
 
   type ConnectorListener = {
@@ -921,17 +935,105 @@ description: 'Using PowerSync to make an app you can use without requiring an ac
   })
   ```
 
-  And that's it!
+  And that's it, you're all done!
 
   We set up all the dominoes and got to watch them fall (which always happens much faster than the setup).
 </section>
 
 <section>
 
-  ## Insert Order of Operations
+  ## Sidebar: Insert Order of Operations
+<label for="thats-not-all" class="margin-toggle">&#8853;</label>
+<input type="checkbox" id="thats-not-all" class="margin-toggle"/>
+<span class="marginnote">
+  `Narrator:` That was not it, and you were not done...
+</span>
+
+  So uhm yeah, this is a sidebar, so maybe you're not gonna run into this at all. But I ran into it, at full speed...
+
+  My riches of tables have multiple foreign key references. They depend on each other in a specific directed acyclic order.
+
+  What ends up happening after the switch is that the transaction operation happens in an order you can't quite control (as far as I know). Leading to a bunch of:
+
+  > `ERROR: insert or update on table "child_table" violates foreign key constraint "fk_constraint_name"`
+  >
+  > `DETAIL: Key (parent_id)=(100) is not present in table "parent_table".`
+  > <footer>My console, multiple times.</footer>
+
+  Our underlying local(-first) SQLite table doesn't have the foreign key constraint turned on by default. We can insert whatever we want in the order we want, then if all the data references are good when the transaction ends, you're good. Postgres is not so kind.
+
+  The fix was straightforward but exhausting.
+
+  Have a list of your working table insertion order:
+  <label for="insertion-order" class="margin-toggle">&#8853;</label>
+  <input type="checkbox" id="insertion-order" class="margin-toggle"/>
+  <span class="marginnote">
+    If `A` references `B` which references `C`, you'll want to go `[C, B, A]`
+  </span>
+
+  ```ts
+  /** Foreign key reference safe table order in which to insert data. */
+  export const INSERT_ORDER: Tables[] = [
+    /* list them here in order of insertion */
+  ]
+  ```
+
+  Then make sure to sort the operations in the `PowersyncConnector`:
+  <label for="a-better-place" class="margin-toggle">&#8853;</label>
+  <input type="checkbox" id="a-better-place" class="margin-toggle"/>
+  <span class="marginnote">
+    I believe there's a better way and place to do this but I have not found it.
+  </span>
+
+  ```ts
+  export class PowersyncConnector
+    extends BaseObserver<ConnectorListener>
+    implements PowerSyncBackendConnector {
+
+    async uploadData(database: AbstractPowerSyncDatabase): Promise<void> {
+      const transaction = await database.getNextCrudTransaction()
+
+      if (!transaction)
+        return
+
+      let lastOp: CrudEntry | null = null
+      try {
+        // due to foreign key references inserts need to happen in a particular order
+        // this is mostly relevant for transfering logged out data to logged in accounts
+        // other places already do it in the right order
+        const sortedCrud = transaction.crud
+          .toSorted((a, b) => INSERT_ORDER.indexOf(a.table) - INSERT_ORDER.indexOf(b.table))
+
+        for (const op of sortedCrud) {
+          // and so on and so forth...
+        }
+      }
+    }
+  }
+  ```
+
+  That should be it.
+  <label for="narrator-crickets" class="margin-toggle">&#8853;</label>
+  <input type="checkbox" id="narrator-crickets" class="margin-toggle"/>
+  <span class="marginnote">
+    `Narrator (begrudgingly):` That was it.
+  </span>
+
 </section>
 
 <section>
 
   ## Conclusion
+
+  First off, big thanks for making it to the end. This is the longest post so far but the struggles I faced implementing this drove me to write. If you're another local-first afficionado and decide to undertake this feature as well I hope this helps you out.
+
+  Make sure to test the hell out of this. You're dealing with auth and precious user data.
+
+  With
+  <label for="asterisk" class="margin-toggle">&#8853;</label>
+  <input type="checkbox" id="asterisk" class="margin-toggle"/>
+  <span class="marginnote">
+    \*If you've got a PWA, I can't make any promises for how long a user's device will keep browser storage before choosing to clear it out. I don't know if the universe where wasm sqlite stores information is protected. But with an account and data synced, it should last until you accidentally wipe it yourself.
+  </span>
+  this, our app now works without requiring users to create an account unless they want to. Should they choose to do so, they will find their autonomy respected and their data preserved*.
 </section>
