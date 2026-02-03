@@ -292,6 +292,7 @@ code, pre > code {
   -webkit-text-size-adjust: 100%; /* Prevent adjustments of font size after orientation changes in iOS. See https://github.com/edwardtufte/tufte-css/issues/81#issuecomment-261953409 */
 }
 
+/* inline code */
 code:not(pre > *) {
   color: #1E66F5;
   background-color: #EFF1F5;
@@ -400,8 +401,8 @@ label.margin-toggle:not(.sidenote-number) {
   }
 
   blockquote {
-    margin-left: 1.5em;
-    margin-right: 0em;
+    padding-left: 1.5em;
+    padding-right: 0em;
   }
 
   blockquote p,
@@ -474,11 +475,6 @@ body {
   background-color: #fffff8;
   color: #111;
 
-  &.dark {
-    background-color: #151515;
-    color: #ddd;
-  }
-
   transition:
     background-color 300ms ease-in-out,
     color 300ms ease-in-out;
@@ -532,7 +528,16 @@ body {
     }
   }
 
+  blockquote {
+    margin-inline: 0;
+    padding-inline: 40px;
+    border-left: 2px solid #1E66F5;
+  }
+
   &.dark {
+    background-color: #151515;
+    color: #ddd;
+
     h1#site-title,
     h3#post-nav {
       label#theme-toggle {
@@ -541,6 +546,10 @@ body {
         }
       }
     }
+
+  blockquote {
+      border-color: #89B4FA;
+  }
 
     code:not(pre > *) {
       color: #89B4FA;
