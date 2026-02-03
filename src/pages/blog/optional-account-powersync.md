@@ -84,7 +84,7 @@ description: 'Using PowerSync to make an app you can use without requiring an ac
 
   1. [Change your PowerSync schema creation into a function with dynamic names](#function-able-schema)
   2. [Keep track when Sync Mode is enabled or not](#sync-mode-tracking)
-  3. [Update your routes and UX around the auth and "user setting" pages](#auth-routes-and-pages)
+  3. [Update your routes and UX around the auth and "user setting" pages](#sidebar-auth-routes-and-pages)
   4. [Handle the "signed out user"](#default-signed-out-user)
   5. [Add a reference to the User ID in all columns if not present](#user-id-references-in-tables)
   6. The rest of the owl
@@ -199,10 +199,14 @@ description: 'Using PowerSync to make an app you can use without requiring an ac
   ```
 
   Of special note here is the `draft_todos` table. This is a table that will always be local only, I don't want to sync it and in my app the logic already always clears it out.
-  <label for="draft-tables" class="margin-toggle">&#8853;</label>
-  <input type="checkbox" id="draft-tables" class="margin-toggle"/>
+  I used these `draft_` tables for long running forms. Copy the live data into a draft table, apply user edits to it, then on save reconcile the changes. With this pattern I had an easier time dropping all changes on quit or cancel.
+
+  <label for="repetition" class="margin-toggle">&#8853;</label>
+  <input type="checkbox" id="repetition" class="margin-toggle"/>
   <span class="marginnote">
-    I used these tables for long running forms. Copy the live data into a draft table, apply user edits to it, then on save reconcile the changes. With this pattern I had an easier time dropping all changes on quit or cancel.
+    <br><br>
+    Now in spite of my lazyness, there's still a ungodly amount of repetition in this schema definition. It nags at me in the night.
+    It should be possible to have this all in a loop or so while keeping the types but I haven't gotten around to it yet.
   </span>
 
 
@@ -266,17 +270,173 @@ description: 'Using PowerSync to make an app you can use without requiring an ac
     })
   }
   ```
+
+  </details>
+
+  Finally, make sure to update the creation of your PowerSync instance with the new schema as a function.
+
+  ```ts
+  // default to `true` so the current app keeps working
+  const syncEnabled = true
+
+  export const powersync = new PowerSyncDatabase({
+    schema: makeSchema(syncEnabled),
+    database: new WASQLiteOpenFactory({ dbFilename: DB_NAME }),
+  })
+  ```
+
+  <details>
+    <summary><h3>Bonus: Types</h3></summary>
+
+  To get access to the type of your database and tables you can use the following:
+
+  ```ts
+  import type { makeSchema } from '/path/to/your/schema'
+
+  export type Database = ReturnType<typeof makeSchema>['types']
+  export type Tables = keyof Database
+
+  export type TodosRecord = Database['todos']
+  export type ListsRecord = Database['lists']
+  ```
   </details>
 </section>
 
 <section>
 
   ## Sync Mode Tracking
+
+  Your schema is now ready to work fully offline or with sync depending on the auth status.
+
+  But like with site themes, your app needs to know the auth state as early as possible for correct bootstrap and outside of the normal auth flow so that it can always be accessed.
+
+  That's a job for `localStorage`.
+
+  Luckily the PowerSync example has just [what we need](https://github.com/powersync-ja/powersync-js/blob/main/demos/react-supabase-todolist-optional-sync/src/library/powersync/SyncMode.ts) so we can copy that over.
+
+  ```ts
+  const SYNC_KEY = 'syncEnabled'
+
+  export function getSyncEnabled(dbName: string) {
+    const key = `${SYNC_KEY}-${dbName}`
+    const value = JSON.parse(localStorage.getItem(key) ?? 'null') as boolean | null
+
+    if (value == null) {
+      // the example has a bug here, pass the `dbName` not the key
+      // otherwise you'll get `${key}-${key}-${dbName}` stored
+      setSyncEnabled(dbName, false)
+      return false
+    }
+
+    return value === true
+  }
+
+  export function setSyncEnabled(dbName: string, enabled: boolean) {
+    const key = `${SYNC_KEY}-${dbName}`
+
+    localStorage.setItem(key, enabled ? 'true' : 'false')
+  }
+  ```
+
+  We can then put that to good use in a few places.
+
+  ### PowerSync instance
+
+  ```ts
+  import { getSyncEnabled, setSyncEnabled } from '/path/to/syncmode'
+
+  // Not the final resting place of this line
+  setSyncEnabled(DB_NAME, true)
+
+  const syncEnabled = getSyncEnabled(DB_NAME)
+
+  export const powersync = new PowerSyncDatabase({
+    schema: makeSchema(syncEnabled),
+    database: new WASQLiteOpenFactory({ dbFilename: DB_NAME }),
+  })
+  ```
+
+  ### `main.ts`
+
+  This may look a bit weird, <label for="peak-performance" class="margin-toggle">&#8853;</label>
+  <input type="checkbox" id="peak-performance" class="margin-toggle"/>
+  <span class="marginnote">
+    This is what peak performance looks like. Not me fighting the linter (shoutout to [Antfu's ESLint Config](https://github.com/antfu/eslint-config)).
+  </span>
+  but I want to avoid a top level await (even though really this is the same thing).
+
+  ```ts
+  import { getSyncEnabled } from '/path/to/syncmode'
+
+  async function bootstrap() {
+    await powersync.init()
+
+    const connector = new PowersyncConnector(auth)
+    connector.registerListener({
+      // user is signed in when this is called
+      sessionStarted: async (user) => {
+        // STUB for now
+        const isSyncMode = getSyncEnabled(powersync.database.name)
+        console.warn('[TODO]: use sync mode')
+
+        await powersync.connect(connector)
+      },
+    })
+
+    await connector.init()
+  }
+
+  void bootstrap().then(() => {
+    const app = createApp(App)
+
+    app.use(router)
+    app.use(store)
+    app.mount('#app')
+  })
+
+  ```
 </section>
 
 <section>
 
-  ## Auth Routes and Pages
+  ## Sidebar: Auth Routes and Pages
+
+  On my journey to support account free usage, there were also UX and Business Logic things to change.
+
+  This may or may not apply to you but I bring it up here for completeness.
+
+  There are 2 main things you need to consider.
+
+  ### 1. Route redirection on "auth only" pages
+
+  Like me, you probably had some pages that were meant to be accessible only to authenticated users like User Settings, or element creation, etc.
+
+  Maybe even with a cheeky `route.meta.requiresAuth`.
+
+  Well no longer. Now everything is accessible to everyone.
+
+  So make sure your router redirects for these pages is updated to allow visits and remove the `requiresAuth` route meta (or your equivalent) everywhere.
+
+  You may also want to update your catch all route. For me if someone visited `/something/thats-not-a/route`, I would redirect to the account sign up page. That no longer makes sense and is now the app homepage.
+
+  ### 2. Unauthenticated user pages
+
+  Finally, the User Settings page used to only be worth it for a logged in user.
+
+  Well no longer!
+
+  People without an account may visit this page (or not, you could keep that one locked), it's worth having a version for logged out users.
+
+  I went with the Log in & Sign up buttons that link to the respective pages + an explanation of the point of an account.
+
+  > ### An account is optional.
+  > Mylo is free to use without an account for as long as you want.
+  >
+  > Logging in or creating an account lets you sync your workouts across devices.
+  >
+  > All your workouts and training data will be merged into your account. **You won't lose anything.**
+  > <footer>The wording I've got on my Account page for signed out users.</footer>
+
 </section>
 
 <section>
