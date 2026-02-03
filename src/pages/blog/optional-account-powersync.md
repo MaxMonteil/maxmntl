@@ -91,7 +91,7 @@ description: 'Using PowerSync to make an app you can use without requiring an ac
   2. [Keep track when Sync Mode is enabled or not](#sync-mode-tracking)
   3. [\[Sidebar\]: Update your routes and UX around the auth and "user setting" pages](#sidebar-auth-routes-and-pages)
   4. [\[Sidebar\]: Handle the "signed out user"](#sidebar-default-signed-out-user)
-  5. [Add a reference to the User ID in all columns if not present](#user-id-references-in-tables)
+  5. [\[Sidebar\]: Add a reference to the User ID in all columns if not present](#sidebar-user-id-references-in-tables)
   6. The rest of the owl
       * [Implement Schema change and data transfer](#local-to-sync-data-transfer)
       * [Switching tables and data on auth](#switching-sync-mode-on-auth)
@@ -431,7 +431,10 @@ description: 'Using PowerSync to make an app you can use without requiring an ac
       this.sbClient = createClient(
         config.supabaseUrl,
         config.supabaseAnonKey,
-        { accessToken: async () => (await this.auth.currentUser?.getIdToken(false)) ?? null },
+        {
+          accessToken: async () =>
+            (await this.auth.currentUser?.getIdToken(false)) ?? null,
+        },
       )
 
       auth.onAuthStateChanged(user => this.updateUser(user))
@@ -564,7 +567,10 @@ description: 'Using PowerSync to make an app you can use without requiring an ac
       this.sbClient = createClient(
         config.supabaseUrl,
         config.supabaseAnonKey,
-        { accessToken: async () => (await this.auth.currentUser?.getIdToken(false)) ?? null },
+        {
+          accessToken: async () =>
+            (await this.auth.currentUser?.getIdToken(false)) ?? null,
+        },
       )
 
       auth.onAuthStateChanged(user => this.updateUser(user))
@@ -578,7 +584,9 @@ description: 'Using PowerSync to make an app you can use without requiring an ac
       this.updateUser(this.auth.currentUser)
 
       this.ready = true
-      this.iterateListeners(async cb => cb.initialized?.(this.auth.currentUser))
+      this.iterateListeners(
+        async cb => cb.initialized?.(this.auth.currentUser),
+      )
     }
 
     updateUser(user: User | null) {
@@ -593,7 +601,49 @@ description: 'Using PowerSync to make an app you can use without requiring an ac
 
 <section>
 
-  ## User ID References in Tables
+  ## Sidebar: User ID References in Tables
+
+  With Supabase and row-level security, I have a policy enabling changes to a row only if the ID of the user making the request matches the `uid` row on the table.
+
+  ```sql
+  ALTER POLICY "Enable all for owner"
+  ON "public"."<table_name>"
+  TO PUBLIC
+  USING ((SELECT (auth.jwt() ->> 'sub'::text)) = uid);
+  ```
+
+  It wasn't directly used in the app so I hadn't had it in my schema till now.
+
+  For the schema switch on auth it'll be especially important to have this row defined so that the logged out data can be assigned to the user on transfer.
+
+  ```ts
+  import type { BaseColumnType } from '@powersync/web'
+
+  import { column } from '@powersync/web'
+
+  const listsDef = {
+    columns: {
+      uid: column.text as BaseColumnType<string>,
+      /* other table columns */
+    },
+    options: (viewName: string, localOnly = false) => ({
+      viewName,
+      localOnly,
+    }),
+  }
+
+  const todosDef = {
+    columns: {
+      uid: column.text as BaseColumnType<string>,
+      /* other table columns */
+    },
+    options: (viewName: string, localOnly = false) => ({
+      viewName,
+      localOnly,
+      /* other table options */
+    }),
+  }
+  ```
 </section>
 
 <section>
