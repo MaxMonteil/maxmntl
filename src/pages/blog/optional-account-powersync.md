@@ -604,6 +604,11 @@ description: 'Using PowerSync to make an app you can use without requiring an ac
   ## Sidebar: User ID References in Tables
 
   With Supabase and row-level security, I have a policy enabling changes to a row only if the ID of the user making the request matches the `uid` row on the table.
+  <label for="supabase-policy" class="margin-toggle">&#8853;</label>
+  <input type="checkbox" id="supabase-policy" class="margin-toggle"/>
+  <span class="marginnote">
+    ⚠ The way I'm getting the `uid` here is because of Firebase Auth. Your case may be different or similar. [Who even understands JWTs?](https://datatracker.ietf.org/doc/html/rfc7519)
+  </span>
 
   ```sql
   ALTER POLICY "Enable all for owner"
@@ -649,11 +654,276 @@ description: 'Using PowerSync to make an app you can use without requiring an ac
 <section>
 
   ## Local to Sync Data Transfer
+
+  Now, after all this prep, lets write the meat and bones of this operation.
+
+  After a user signs in or registers, we want to take all the data from the local tables and insert it into the synced tables.
+
+  Then we update the `syncEnabled` state to make sure we're using these snazzy new tables.
+
+  Finally we clear out the local tables (unless you want that data to still be present when they sign out again).
+
+  When a user signs out, we clear everything and disable sync.
+
+  So here's the basic approach if you have a just few tables.
+  ```ts
+  // powersync/switchSchema.ts
+
+  import type { PowerSyncDatabase } from '@powersync/web'
+
+  import { makeSchema } from './schema'
+  import { setSyncEnabled } from './syncMode'
+
+  // moved these 2 here for convenience
+  export function syncedName(table: string, synced: boolean) {
+    return synced ? table : `inactive_synced_${table}`
+  }
+
+  export function localName(table: string, synced: boolean) {
+    return synced ? `inactive_local_${table}` : table
+  }
+
+  export async function switchToSyncedSchema(db: PowerSyncDatabase, userId: string) {
+    await db.updateSchema(makeSchema(true))
+    setSyncEnabled(db.database.name, true)
+
+    await db.writeTransaction(async (trx) => {
+      const todosColumns = Object.keys(todosDef.columns).toString()
+      await trx.execute(`
+        INSERT INTO todos(id, ${todosColumns})
+        SELECT id, ${todosColumns}
+        FROM ${localName('todos', true)}
+      `)
+
+      // I filter out `uid` to manually add it in the position I want for the query
+      const listsColumns = Object.keys(listsDef.columns).filter(c => c !== 'uid').toString()
+      await trx.execute(`
+        INSERT INTO lists(id, ${listsColumns}, uid)
+        SELECT id, ${listsColumns}, ?
+        FROM ${localName('lists', true)}
+      `, [userId])
+
+
+      // clear out all local tables
+      trx.execute(`DELETE FROM ${localName('todos', true)}`)
+      trx.execute(`DELETE FROM ${localName('lists', true)}`)
+    })
+  }
+
+  export async function switchToLocalSchema(db: PowerSyncDatabase) {
+    await db.updateSchema(makeSchema(false))
+    setSyncEnabled(db.database.name, false)
+
+    await db.writeTransaction(async (trx) => {
+      await Promise.all(['todos', 'lists'].map(
+        async name => trx.execute(`DELETE FROM ${syncedName(name, true)}`),
+      ))
+    })
+  }
+  ```
+
+  ### Not all tables are created equal
+
+  In my case, I didn't have just a few tables and some were more equal than others.
+
+  At 10 tables (double that for the `local_*` ones), I *needed* the loop.
+
+  I also had those pesky "true local only" tables that I don't want to sync but do want to clear out.
+
+  Finally my user tables would conflict against my Supabase constraints.
+
+  These "lesser" tables had to go, but in slightly different ways, so I make an array of tables to exclude, and turn everything into a loop.
+
+  First, the undesirables:
+  ```ts
+  /** Tables to exclude from local -> online sync. */
+  export const SYNC_EXCLUDED_TABLES = [
+    /** `draft_*` tables are local only and can be wiped. */
+    'draft_',
+
+    /** `inactive_*` tables are temporary copies to ignore. */
+    'inactive_',
+
+    /** The local user is discarded to prevent sync conflicts. */
+    'users',
+  ]
+
+  /** Tables to exclude from purge during auth state switch. */
+  export const DELETE_EXCLUDED_TABLES = [
+    /** `inactive_*` tables are temporary copies to ignore. */
+    'inactive_',
+
+    /** `draft_*` tables are local only and can be wiped. */
+    'draft_',
+
+    // We DO want to clear the local user table
+    // 'users',
+  ]
+  ```
+
+  Now all loopified:
+  <label for="metaphor" class="margin-toggle">&#8853;</label>
+  <input type="checkbox" id="metaphor" class="margin-toggle"/>
+  <span class="marginnote">
+    There's also that `uid` column on every table that I want to treat extra special.
+  </span>
+
+  ```ts
+  // powersync/switchSchema.ts
+
+  import type { PowerSyncDatabase } from '@powersync/web'
+
+  import { DELETE_EXCLUDED_TABLES, SYNC_EXCLUDED_TABLES } from './constants'
+  import { makeSchema } from './schema'
+  import { setSyncEnabled } from './syncMode'
+
+  export function syncedName(table: string, synced: boolean) {
+    return synced ? table : `inactive_synced_${table}`
+  }
+
+  export function localName(table: string, synced: boolean) {
+    return synced ? `inactive_local_${table}` : table
+  }
+
+  export async function switchToSyncedSchema(db: PowerSyncDatabase, userId: string) {
+    await db.updateSchema(makeSchema(true))
+    setSyncEnabled(db.database.name, true)
+
+    await db.writeTransaction(async (trx) => {
+      const tableNames = db.schema.tables
+        .filter(t => SYNC_EXCLUDED_TABLES.every(ex => !t.viewName.startsWith(ex)))
+        .map(t => ({
+          sync: t.viewName,
+          local: localName(t.viewName, true),
+          columns: Object.keys(t.columnMap).filter(c => c !== 'uid'),
+        }))
+
+      // manually add `id`, it's there by default but not in the table definitions
+      // adding `uid` at the end to make sure of the order
+      await Promise.all(tableNames.map(async t => trx.execute(`
+        INSERT INTO ${t.sync}(id, ${t.columns.toString()}, uid)
+        SELECT id, ${t.columns.toString()}, ?
+        FROM ${t.local}
+      `, [userId])))
+
+      // clear out all local tables
+      const localOnlyTables = db.schema.tables
+        .filter(t => DELETE_EXCLUDED_TABLES.every(ex => !t.viewName.startsWith(ex)))
+        .map(t => localName(t.viewName, true))
+      await Promise.all(localOnlyTables.map(async name => trx.execute(`DELETE FROM ${name}`)))
+    })
+  }
+
+  export async function switchToLocalSchema(db: PowerSyncDatabase) {
+    await db.updateSchema(makeSchema(false))
+    setSyncEnabled(db.database.name, false)
+
+    await db.writeTransaction(async (trx) => {
+      const syncTables = db.schema.tables
+        .filter(t => DELETE_EXCLUDED_TABLES.every(ex => !t.viewName.startsWith(ex)))
+        .map(t => syncedName(t.viewName, true))
+      await Promise.all(syncTables.map(async name => trx.execute(`DELETE FROM ${name}`)))
+    })
+  }
+  ```
+
+  Presto! We're ready to wire all this up.
 </section>
 
 <section>
 
   ## Switching Sync Mode on Auth
+
+  Now lets do the skin and hair of this operation!
+  <label for="metaphor" class="margin-toggle">&#8853;</label>
+  <input type="checkbox" id="metaphor" class="margin-toggle"/>
+  <span class="marginnote">
+    How's my metaphor extension?
+    <br>
+    Call 1-800-888-8888
+  </span>
+
+  So where are we at now?
+  * Tables are ready
+  * Schema is parametric
+  * Data switching is set up
+  * We know whether to sync or not
+
+  Now we orchestrate all these elements together.
+
+  ### 0. In PowerSync init
+
+  Now that things will be wired up, we can forego the hardcoded value.
+
+  ```ts
+  const syncEnabled = getSyncEnabled(DB_NAME)
+
+  export const powersync = new PowerSyncDatabase({
+    schema: makeSchema(syncEnabled),
+    database: new WASQLiteOpenFactory({ dbFilename: DB_NAME }),
+  })
+  ```
+
+  ### 1. On sign in or register
+
+  Here we have a newly authenticated user while still being in sync mode off.
+
+  That means it's time to switch to sync mode and transfer the data.
+  ```ts
+  // main.ts
+
+  sessionStarted: async (user) => {
+    const isSyncMode = getSyncEnabled(powersync.database.name)
+    if (isSyncMode === false)
+      await switchToSyncedSchema(powersync, user.uid)
+
+    await powersync.connect(connector)
+  },
+  ```
+
+  ### 2. On sign out
+
+  Wherever you've got your sign out logic, you'll want to then switch back to local tables and turn sync mode off.
+
+  Here's what that looks like for me.
+
+  ```ts
+  import { auth } from '@/features/auth'
+  import { powersync, switchToLocalSchema } from '@/libraries/powersync'
+
+  export async function signOutUserUseCase() {
+    if (auth.currentUser == null)
+      throw new Error('Unable to logout.')
+
+    await powersync.disconnectAndClear()
+    await switchToLocalSchema(powersync)
+    await auth.signOut()
+
+    // this erases the sync mode key but it gets initialized to `false` so all good
+    localStorage.clear()
+
+    window.location.reload()
+  }
+  ```
+
+  ### Sidebar: In the router
+
+  Now here is a Vue-ism so your version may vary.
+
+  I found that waiting for the first database sync prevented a blank loading page which isn't very local-first or it loaded partial data until a refresh.
+
+  ```ts
+  router.beforeEach(async (to) => {
+    if (auth.currentUser != null)
+      await database.waitForFirstSync()
+
+    // rest of your router guard logic...
+  })
+  ```
+
+  And that's it!
+
+  We set up all the dominoes and got to watch them fall (which always happens much faster than the setup).
 </section>
 
 <section>
@@ -663,26 +933,5 @@ description: 'Using PowerSync to make an app you can use without requiring an ac
 
 <section>
 
-  ## Steps
-
-  1. change to a "function" able schema
-  2. track "sync mode" in local storage
-    1.`PowersyncConnector.sessionStarted` set syncmode
-    2. note that while testing it'll start off false which we don't support yet
-  3. consider the UX for your auth pages and "user settings" page
-  4. update your app routing `requiresAuth`
-    1. also what about your default catch all
-  5. depending on your tables, you may need to create a "default user" when signed out
-    1.`PowersyncConnector.initialized` listener is good here
-  6. `uid` or your user id column needs to be everywhere
-    1. special note about firebase
-    2. needs to be a value you have access to from the auth flow
-  7. data transfer
-    1. implementing the switch functions
-      1. not all tables are created equal
-      2. special note about always local-only tables
-    2. switch to local on sign out
-    3. sorting crud operations in the connector
-    4. wait for first sync in router
-    5. expand `sessionStarted` listener
+  ## Conclusion
 </section>
