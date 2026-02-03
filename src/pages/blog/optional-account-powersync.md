@@ -92,8 +92,7 @@ description: 'Using PowerSync to make an app you can use without requiring an ac
 
   Additionally I'll go over issues and other things I ran into.
 
-  ### Rough Steps
-  <label for="option-function" class="margin-toggle">&#8853;</label>
+  ### Rough Steps <label for="option-function" class="margin-toggle">&#8853;</label>
   <input type="checkbox" id="option-function" class="margin-toggle"/>
   <span class="marginnote">
     The [Sidebar] topics are more about the app and business logic steps, not PowerSync directly.
@@ -139,11 +138,9 @@ description: 'Using PowerSync to make an app you can use without requiring an ac
   But we'll need to create our schema with dynamic view names, depending on whether we're in sync mode or not.
 
   First we create an object for our table definitions.
-  <label for="option-function" class="margin-toggle">&#8853;</label>
-  <input type="checkbox" id="option-function" class="margin-toggle"/>
-  <span class="marginnote">
-    ⚠ Watch out! `options` is a function.
-  </span>
+  <label for="option-is-function" class="margin-toggle">&#8853;</label>
+  <input type="checkbox" id="option-is-function" class="margin-toggle"/>
+  <span class="marginnote">⚠ Watch out! `options` is a function.</span>
 
   ```ts
   const todosDef = {
@@ -216,9 +213,7 @@ description: 'Using PowerSync to make an app you can use without requiring an ac
   ```
 
   Of special note here is the `draft_todos` table. This is a table that will always be local only, I don't want to sync it and in my app the logic already always clears it out.
-  I used these `draft_` tables for long running forms. Copy the live data into a draft table, apply user edits to it, then on save reconcile the changes. With this pattern I had an easier time dropping all changes on quit or cancel.
-
-  <label for="repetition" class="margin-toggle">&#8853;</label>
+  I used these `draft_` tables for long running forms. Copy the live data into a draft table, apply user edits to it, then on save reconcile the changes. With this pattern I had an easier time dropping all changes on quit or cancel. <label for="repetition" class="margin-toggle">&#8853;</label>
   <input type="checkbox" id="repetition" class="margin-toggle"/>
   <span class="marginnote">
     <br><br>
@@ -504,7 +499,7 @@ description: 'Using PowerSync to make an app you can use without requiring an ac
 
   People without an account may visit this page (or not, you could keep that one locked), it's worth having a version for logged out users.
 
-  I went with the Log in & Sign up buttons that link to the respective pages + an explanation of the point of an account.
+  I went with the Log in & Sign up buttons that link to the respective pages plus an explanation of the point of an account.
 
   > ### An account is optional.
   > Mylo is free to use without an account for as long as you want.
@@ -848,9 +843,8 @@ description: 'Using PowerSync to make an app you can use without requiring an ac
 
   ## Switching Sync Mode on Auth
 
-  Now lets do the skin and hair of this operation!
-  <label for="metaphor" class="margin-toggle">&#8853;</label>
-  <input type="checkbox" id="metaphor" class="margin-toggle"/>
+  Now lets do the skin and hair of this operation! <label for="metaphor-extended" class="margin-toggle">&#8853;</label>
+  <input type="checkbox" id="metaphor-extended" class="margin-toggle"/>
   <span class="marginnote">
     How's my metaphor extension?
     <br>
@@ -935,7 +929,9 @@ description: 'Using PowerSync to make an app you can use without requiring an ac
   })
   ```
 
-  And that's it, you're all done!
+  And that's it, you're all done! <label for="thats-not-all" class="margin-toggle">&#8853;</label>
+<input type="checkbox" id="thats-not-all" class="margin-toggle"/>
+<span class="marginnote">`Narrator:` That was not it, and I was not done...</span>
 
   We set up all the dominoes and got to watch them fall (which always happens much faster than the setup).
 </section>
@@ -943,11 +939,6 @@ description: 'Using PowerSync to make an app you can use without requiring an ac
 <section>
 
   ## Sidebar: Insert Order of Operations
-<label for="thats-not-all" class="margin-toggle">&#8853;</label>
-<input type="checkbox" id="thats-not-all" class="margin-toggle"/>
-<span class="marginnote">
-  `Narrator:` That was not it, and you were not done...
-</span>
 
   So uhm yeah, this is a sidebar, so maybe you're not gonna run into this at all. But I ran into it, at full speed...
 
@@ -1027,13 +1018,11 @@ description: 'Using PowerSync to make an app you can use without requiring an ac
 
   First off, big thanks for making it to the end. This is the longest post so far but the struggles I faced implementing this drove me to write. If you're another local-first afficionado and decide to undertake this feature as well I hope this helps you out.
 
-  Make sure to test the hell out of this. You're dealing with auth and precious user data.
-
-  With
-  <label for="asterisk" class="margin-toggle">&#8853;</label>
+  With this, our app now works without requiring users to create an account unless they want to. Should they choose to do so, they will find their autonomy respected and their data preserved*. <label for="asterisk" class="margin-toggle">&#8853;</label>
   <input type="checkbox" id="asterisk" class="margin-toggle"/>
   <span class="marginnote">
     \*If you've got a PWA, I can't make any promises for how long a user's device will keep browser storage before choosing to clear it out. I don't know if the universe where wasm sqlite stores information is protected. But with an account and data synced, it should last until you accidentally wipe it yourself.
   </span>
-  this, our app now works without requiring users to create an account unless they want to. Should they choose to do so, they will find their autonomy respected and their data preserved*.
+
+  Make sure to test the hell out of this. You're dealing with auth and precious user data.
 </section>

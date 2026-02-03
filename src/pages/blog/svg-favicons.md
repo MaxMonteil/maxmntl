@@ -108,5 +108,9 @@ But I could now paste it into Figma, though it was upside down and flipped verti
 
 So I make my Favicon, pass it through the eternally amazing [SVGOMG](https://svgomg.net/), slap it onto my site and badabing badaboom *SSStylish!*<label for="theme-toggle-tangent" class="margin-toggle">&#8853;</label>
 <input type="checkbox" id="theme-toggle-tangent" class="margin-toggle"/>
-<span class="marginnote">I should add a light/dark theme toggle...</span>
+<span class="marginnote">
+  I should add a light/dark theme toggle...
+  <br>
+  *Edit: I added one! And it wiggles!!*
+</span>
 </section>

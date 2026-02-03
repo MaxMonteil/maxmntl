@@ -446,6 +446,11 @@ label.margin-toggle:not(.sidenote-number) {
 }
 
 /* New tags */
+label,
+input {
+  -webkit-tap-highlight-color: transparent;
+}
+
 details {
   width: 55%;
 

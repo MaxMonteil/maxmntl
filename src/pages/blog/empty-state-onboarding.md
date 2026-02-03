@@ -133,8 +133,7 @@ description: 'My approach to onboarding flows in apps'
 
   ## Conclusion
 
-  So this was my approach to onboarding.
-  <label for="images-tangent" class="margin-toggle">&#8853;</label>
+  So this was my approach to onboarding. <label for="images-tangent" class="margin-toggle">&#8853;</label>
   <input type="checkbox" id="images-tangent" class="margin-toggle"/>
   <span class="marginnote">
     I really need to add some images to my blog, would have made this post much easier to understand...
