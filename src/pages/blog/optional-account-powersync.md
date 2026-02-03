@@ -81,11 +81,16 @@ description: 'Using PowerSync to make an app you can use without requiring an ac
   Additionally I'll go over issues and other things I ran into.
 
   ### Rough Steps
+  <label for="option-function" class="margin-toggle">&#8853;</label>
+  <input type="checkbox" id="option-function" class="margin-toggle"/>
+  <span class="marginnote">
+    The [Sidebar] topics are more about the app and business logic steps, not PowerSync directly.
+  </span>
 
   1. [Change your PowerSync schema creation into a function with dynamic names](#function-able-schema)
   2. [Keep track when Sync Mode is enabled or not](#sync-mode-tracking)
-  3. [Update your routes and UX around the auth and "user setting" pages](#sidebar-auth-routes-and-pages)
-  4. [Handle the "signed out user"](#default-signed-out-user)
+  3. [\[Sidebar\]: Update your routes and UX around the auth and "user setting" pages](#sidebar-auth-routes-and-pages)
+  4. [\[Sidebar\]: Handle the "signed out user"](#sidebar-default-signed-out-user)
   5. [Add a reference to the User ID in all columns if not present](#user-id-references-in-tables)
   6. The rest of the owl
       * [Implement Schema change and data transfer](#local-to-sync-data-transfer)
@@ -379,6 +384,7 @@ description: 'Using PowerSync to make an app you can use without requiring an ac
         const isSyncMode = getSyncEnabled(powersync.database.name)
         console.warn('[TODO]: use sync mode')
 
+        // Only connect PowerSync to Supabase when there's a signed in user
         await powersync.connect(connector)
       },
     })
@@ -393,7 +399,61 @@ description: 'Using PowerSync to make an app you can use without requiring an ac
     app.use(store)
     app.mount('#app')
   })
+  ```
 
+  In the `PowersyncConnector` class, you'll need to register the listener and call it as needed.
+
+  ```ts
+  // In my case I'm using Firebase for auth, if you use Supabase it should be more similar to the PowerSync docs
+  // If you use something else this should help you find the places to change when using a 3rd party auth service
+  import type { Auth, User } from 'firebase/auth'
+
+  type ConnectorListener = {
+    sessionStarted: (user: User) => Promise<void>
+  }
+
+  export class PowersyncConnector
+    extends BaseObserver<ConnectorListener>
+    implements PowerSyncBackendConnector {
+    readonly sbClient: SupabaseClient
+
+    ready: boolean
+
+    auth: Auth
+
+    constructor(auth: Auth) {
+      super()
+
+      this.ready = false
+
+      this.auth = auth
+
+      this.sbClient = createClient(
+        config.supabaseUrl,
+        config.supabaseAnonKey,
+        { accessToken: async () => (await this.auth.currentUser?.getIdToken(false)) ?? null },
+      )
+
+      auth.onAuthStateChanged(user => this.updateUser(user))
+    }
+
+    async init() {
+      if (this.ready)
+        return
+
+      await this.auth.authStateReady()
+      this.updateUser(this.auth.currentUser)
+
+      this.ready = true
+    }
+
+    updateUser(user: User | null) {
+      if (user)
+        this.iterateListeners(async cb => cb.sessionStarted?.(user))
+    }
+
+    // rest of the connector...
+  }
   ```
 </section>
 
@@ -441,7 +501,94 @@ description: 'Using PowerSync to make an app you can use without requiring an ac
 
 <section>
 
-  ## Default Signed-Out User
+  ## Sidebar: Default Signed-Out User
+
+  This once again depends on your particular application.
+
+  If you have a user table, you're likely referencing it in a few other tables and places.
+
+  Logged out users don't have a "user" but codewise you'll want to include some logic to create a type of default user.
+
+  Most important is giving it a User ID which you'll need to reference in all other tables, the next step.
+
+  ```ts
+    async function bootstrap() {
+    await powersync.init()
+
+    const connector = new PowersyncConnector(auth)
+    connector.registerListener({
+      initialized: async (user) => {
+        if (user == null)
+          await createUserUseCase() // here is where you create your "default" user
+      },
+
+      // user is signed in when this is called
+      sessionStarted: async (user) => {
+        // STUB for now
+        const isSyncMode = getSyncEnabled(powersync.database.name)
+        console.warn('[TODO]: use sync mode')
+
+        await powersync.connect(connector)
+      },
+    })
+
+    await connector.init()
+  }
+  ```
+
+  As for the `PowersyncConnector`, you'll also need to add the `initialized` listener.
+
+  ```ts
+  type ConnectorListener = {
+    // note that here the user can be `null`
+    initialized: (user: User | null) => Promise<void>
+    sessionStarted: (user: User) => Promise<void>
+  }
+
+  export class PowersyncConnector
+    extends BaseObserver<ConnectorListener>
+    implements PowerSyncBackendConnector {
+    readonly sbClient: SupabaseClient
+
+    ready: boolean
+
+    auth: Auth
+
+    constructor(auth: Auth) {
+      super()
+
+      this.ready = false
+
+      this.auth = auth
+
+      this.sbClient = createClient(
+        config.supabaseUrl,
+        config.supabaseAnonKey,
+        { accessToken: async () => (await this.auth.currentUser?.getIdToken(false)) ?? null },
+      )
+
+      auth.onAuthStateChanged(user => this.updateUser(user))
+    }
+
+    async init() {
+      if (this.ready)
+        return
+
+      await this.auth.authStateReady()
+      this.updateUser(this.auth.currentUser)
+
+      this.ready = true
+      this.iterateListeners(async cb => cb.initialized?.(this.auth.currentUser))
+    }
+
+    updateUser(user: User | null) {
+      if (user)
+        this.iterateListeners(async cb => cb.sessionStarted?.(user))
+    }
+
+    // rest of the connector...
+  }
+  ```
 </section>
 
 <section>
