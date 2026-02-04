@@ -104,7 +104,7 @@ description: 'The classic meta blog post about how this blog was made.'
 
   After that I added the theme switcher, did I mention that already?
 
-  Since then as I write more I've edited and expanded the Tufte CSS styles to better suit my style. Which is the coolest thing ever, like a carpenter improving their tools. <label for="techward-css" class="margin-toggle">&#8853;</label>
+  Since then, as I write more I've edited and expanded the Tufte CSS styles to better suit my style. Which is the coolest thing ever, like a carpenter improving their tools. <label for="techward-css" class="margin-toggle">&#8853;</label>
   <input type="checkbox" id="techward-css" class="margin-toggle"/>
   <span class="marginnote">
     Those style changes, which internally I call "Techward CSS" are [here](https://github.com/MaxMonteil/maxmntl/blob/main/src/styles/global.css).
