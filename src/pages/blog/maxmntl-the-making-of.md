@@ -25,7 +25,7 @@ description: 'The classic meta blog post about how this blog was made.'
   > How on God's green earth was such an achievement of my species even possible?!
   > <footer>Your soul.</footer>
 
-  Well dear reader, let's not dally any longer. <label for="interrobang-punct" class="margin-toggle">&#8853;</label>
+  Well my dear, beautiful reader, let's not dally any longer. <label for="interrobang-punct" class="margin-toggle">&#8853;</label>
   <input type="checkbox" id="interrobang-punct" class="margin-toggle"/>
   <span class="marginnote">
     The "?!" above is called an interrobang. The more you know.
