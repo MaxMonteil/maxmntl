@@ -16,6 +16,13 @@ const { pageTitle, description } = Astro.props
     <link rel="preload" href="/fonts/et-book-roman-line-figures.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="preload" href="/fonts/et-book-display-italic-old-style-figures.woff2" as="font" type="font/woff2" crossorigin />
 
+    <link
+      rel="alternate"
+      type="application/rss+xml"
+      title="Your Site's Title"
+      href={new URL("rss.xml", Astro.site)}
+  />
+
     <title>{pageTitle}</title>
 	</head>
 	<body>
