@@ -13,12 +13,18 @@ const allPosts = Object.values(import.meta.glob('./blog/*.md', { eager: true }))
 
   <p class="subtitle">Contribution over consumption and other wacky ideas</p>
 
-  <section>
+  <nav id="nav">
+    <ul>
+      <li><a href="/rss.xml">RSS</a></li>
+    </ul>
+  </nav>
+
+  <section id="intro">
     <p>Hello hello, and welcome to my site!</p>
     <p>My name is Max, I have a jumbled mess of thoughts and ideas so I write to clarify but especially to remember.</p>
   </section>
 
-  <section>
+  <section id="posts">
     <h2>Posts</h2>
 
     <ul>
@@ -36,20 +42,45 @@ const allPosts = Object.values(import.meta.glob('./blog/*.md', { eager: true }))
 </BaseLayout>
 
 <style>
-ul {
-  display: flex;
-  flex-direction: column;
-  padding-left: 16px;
+#nav {
+  opacity: 0.5;
 
-  li {
-    display: inline-flex;
+  ul {
+    display: flex;
+    align-items: center;
     gap: 16px;
-    align-items: flex-start;
+    padding: 0;
+    margin-bottom: 0;
 
-    span {
-      white-space: nowrap;
-      opacity: 0.5;
-      font-size: 1.3rem;
+    list-style: none;
+    font-size: 1.1rem;
+
+    li {
+      margin: 0;
+    }
+  }
+}
+
+#posts {
+  h2 {
+    margin-top: 0;
+  }
+
+  ul {
+    display: flex;
+    flex-direction: column;
+    padding-left: 16px;
+
+    li {
+      display: inline-flex;
+      gap: 16px;
+      align-items: flex-start;
+
+      span {
+        white-space: nowrap;
+        opacity: 0.5;
+        font-size: 1.3rem;
+      }
     }
   }
 }
