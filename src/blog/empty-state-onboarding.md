@@ -1,5 +1,4 @@
 ---
-layout: ../../layouts/PostLayout.astro
 title: 'Empty State Onboarding'
 pubDate: 2026-02-02
 description: 'My approach to onboarding flows in apps'

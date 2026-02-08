@@ -1,5 +1,4 @@
 ---
-layout: ../../layouts/PostLayout.astro
 title: 'Account Optional Apps with PowerSync'
 pubDate: 2026-02-03
 description: 'Using PowerSync to make an app you can use without requiring an account.'

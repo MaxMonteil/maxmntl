@@ -1,9 +1,13 @@
 import rss from '@astrojs/rss'
+import { getCollection } from 'astro:content'
+
 import sanitizeHtml from 'sanitize-html'
+import MarkdownIt from 'markdown-it'
+
+const parser = new MarkdownIt()
 
 export async function GET(context) {
-  const postImportResult = import.meta.glob('./blog/*.md', { eager: true });
-  const posts = Object.values(postImportResult)
+  const blog = await getCollection('blog')
 
   return rss({
     title: 'maxmntl',
@@ -11,15 +15,18 @@ export async function GET(context) {
     site: context.site,
     trailingSlash: false,
     stylesheet: '/rss/styles.xsl',
-    items: await Promise.all(posts
-      .toSorted((a, b) => new Date(b.pubDate) - new Date(a.pubDate))
-      .map(async (post) => ({
-        link: post.url,
+    items: blog
+      .toSorted((a, b) => b.data.pubDate - a.data.pubDate)
+      .map(post => ({
+        title: post.data.title,
+        pubDate: post.data.pubDate,
+        description: post.data.description,
+        link: `/blog/${post.id}`,
         author: 'Maximilien Monteil',
-        content: sanitizeHtml((await post.compiledContent())),
-        ...post.frontmatter,
+        content: sanitizeHtml(parser.render(post.body), {
+          allowedTags: sanitizeHtml.defaults.allowedTags.concat(['img']),
+        }),
       })),
-    ),
-    customData: `<language>en-us</language>`,
+    customData: '<language>en-us</language>',
   })
 }

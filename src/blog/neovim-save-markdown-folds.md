@@ -1,5 +1,4 @@
 ---
-layout: ../../layouts/PostLayout.astro
 title: 'Neovim: Save folds in markdown files'
 pubDate: 2026-02-06
 description: 'How to save folds in markdown files in neovim using Lua and autocommands.'

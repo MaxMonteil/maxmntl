@@ -10,7 +10,11 @@
   },
   "dependencies": {
     "@astrojs/rss": "^4.0.15",
-    "astro": "^5.16.11",
+    "astro": "^5.17.1",
+    "markdown-it": "^14.1.0",
     "sanitize-html": "^2.17.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3"
   }
 }

@@ -1,12 +1,13 @@
 ---
+import { getCollection } from 'astro:content'
 import BaseLayout from '../layouts/BaseLayout.astro'
-import ThemeToggle from '../components/ThemeToggle.astro';
+import ThemeToggle from '../components/ThemeToggle.astro'
 
-const allPosts = Object.values(import.meta.glob('./blog/*.md', { eager: true }))
+const allPosts = await getCollection('blog')
 ---
 <BaseLayout pageTitle="maxmntl" description="Contribution over consumption and other wacky ideas">
   <h1 id="site-title">
-    <span>max<span style="opacity: 0.7;">imilien</span> m<span style="opacity: 0.7;">o</span>nt<span style="opacity: 0.7;">ei</span>l</span>
+    <span>max<span>imilien</span> m<span>o</span>nt<span>ei</span>l</span>
 
     <ThemeToggle />
   </h1>
@@ -29,11 +30,11 @@ const allPosts = Object.values(import.meta.glob('./blog/*.md', { eager: true }))
 
     <ul>
       {allPosts
-        .toSorted((a, b) => new Date(b.frontmatter.pubDate) - new Date(a.frontmatter.pubDate))
+        .toSorted((a, b) => +b.data.pubDate - +a.data.pubDate)
         .map(post => (
           <li>
-            <span>{post.frontmatter.pubDate.slice(0, 10)}</span>
-            <a href={post.url}>{post.frontmatter.title}</a>
+            <span>{post.data.pubDate.toISOString().slice(0, 10)}</span>
+          <a href={`/blog/${post.id}`}>{post.data.title}</a>
           </li>
         ))
       }
@@ -42,6 +43,12 @@ const allPosts = Object.values(import.meta.glob('./blog/*.md', { eager: true }))
 </BaseLayout>
 
 <style>
+#site-title {
+  span {
+    opacity: 0.7;
+  }
+}
+
 #nav {
   opacity: 0.5;
 

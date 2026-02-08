@@ -1,5 +1,4 @@
 ---
-layout: ../../layouts/PostLayout.astro
 title: 'The Making Of: maxmntl'
 pubDate: 2026-02-04
 description: 'The classic meta blog post about how this blog was made.'
