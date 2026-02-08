@@ -21,10 +21,36 @@ const allPosts = Object.values(import.meta.glob('./blog/*.md', { eager: true }))
   <section>
     <h2>Posts</h2>
 
-    <ul>{
-        allPosts
-          .toSorted((a, b) => new Date(b.frontmatter.pubDate) - new Date(a.frontmatter.pubDate))
-          .map(post => <li><span style="opacity: 0.7;">{post.frontmatter.pubDate.slice(0, 10)}</span> – <a href={post.url}>{post.frontmatter.title}</a></li>)
-    }</ul>
+    <ul>
+      {allPosts
+        .toSorted((a, b) => new Date(b.frontmatter.pubDate) - new Date(a.frontmatter.pubDate))
+        .map(post => (
+          <li>
+            <span>{post.frontmatter.pubDate.slice(0, 10)}</span>
+            <a href={post.url}>{post.frontmatter.title}</a>
+          </li>
+        ))
+      }
+    </ul>
   </section>
 </BaseLayout>
+
+<style>
+ul {
+  display: flex;
+  flex-direction: column;
+  padding-left: 16px;
+
+  li {
+    display: inline-flex;
+    gap: 16px;
+    align-items: flex-start;
+
+    span {
+      white-space: nowrap;
+      opacity: 0.5;
+      font-size: 1.3rem;
+    }
+  }
+}
+</style>
