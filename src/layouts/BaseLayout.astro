@@ -21,7 +21,14 @@ const { pageTitle, description } = Astro.props
       type="application/rss+xml"
       title="Your Site's Title"
       href={new URL("rss.xml", Astro.site)}
-  />
+    />
+
+    <!-- Privacy-friendly analytics by Plausible -->
+    <script is:inline async src="https://plausible.io/js/pa-9pFC_ZtHSLKjx7NqQxqWU.js"></script>
+    <script>
+      window.plausible=window.plausible||function(){(plausible.q=plausible.q||[]).push(arguments)},plausible.init=plausible.init||function(i){plausible.o=i||{}};
+      plausible.init()
+    </script>
 
     <title>{pageTitle}</title>
 	</head>
