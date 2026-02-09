@@ -24,10 +24,10 @@ const { pageTitle, description } = Astro.props
     />
 
     <!-- Privacy-friendly analytics by Plausible -->
-    <script is:inline async src="https://plausible.io/js/pa-9pFC_ZtHSLKjx7NqQxqWU.js"></script>
+    <script is:inline async src="/info/js/script.js"></script>
     <script>
       window.plausible=window.plausible||function(){(plausible.q=plausible.q||[]).push(arguments)},plausible.init=plausible.init||function(i){plausible.o=i||{}};
-      plausible.init()
+      plausible.init({ endpoint: '/info/api/event' })
     </script>
 
     <title>{pageTitle}</title>
